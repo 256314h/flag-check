@@ -4,144 +4,105 @@ import pandas as pd
 import os
 import datetime
 
-# ================= 配置区 =================
-# 管理员/代理密钥 (你自己或者大代理用这个密码进去)
-AGENT_KEYS = ["8888", "vip666", "admin2026"]
-# 数据文件
-DB_FILE = "black_box_data.csv"
-# 白名单文件
-WHITE_LIST_FILE = "whitelist.csv"
+# ================= 配置区 (安全设置) =================
 
-# ================= 核心函数 =================
+# 1. 访问密码：改成了复杂密码，只有你自己知道
+# 以后你进网站要输入这个：my_secret_2026
+AGENT_KEYS = ["my_secret_2026"] 
+
+# 2. 数据文件名
+DB_FILE = "private_memo.csv"
+
+# ================= 核心功能区 =================
+
 def hash_phone(phone):
-    salt = "project_girls_help_girls_2026" 
+    # 加盐加密，确保只有系统能识别，导出也没用
+    salt = "private_safe_mode_only" 
     target = phone + salt
     return hashlib.md5(target.encode()).hexdigest()
 
 def init_db():
     if not os.path.exists(DB_FILE):
-        # 注意：这里删除了 comment 字段，只留 tag，为了安全
-        df = pd.DataFrame(columns=["hash", "tag", "time", "agent_id"])
+        df = pd.DataFrame(columns=["hash", "tag", "time"])
         df.to_csv(DB_FILE, index=False)
-    if not os.path.exists(WHITE_LIST_FILE):
-        df_white = pd.DataFrame(columns=["hash", "reason", "time"])
-        df_white.to_csv(WHITE_LIST_FILE, index=False)
 
 # ================= 网页界面 =================
-st.set_page_config(page_title="女性互助避雷系统", page_icon="🚫")
+
+# 伪装成“个人备忘录”，避免法律敏感词
+st.set_page_config(page_title="个人私密备忘录", page_icon="🔒")
 init_db()
 
-# --- 侧边栏 ---
-st.sidebar.title("🚫 互助避雷联盟")
-st.sidebar.info("这是一个只有女性知道的秘密基地。\n在这里，我们共享信息，让渣男无处遁形。")
-agent_key = st.sidebar.text_input("请输入通行密钥", type="password")
+# --- 侧边栏：登录与核按钮 ---
+st.sidebar.title("🔒 私人领地")
+agent_key = st.sidebar.text_input("请输入访问密钥", type="password")
 
-# --- 法律免责悬浮窗 ---
-st.warning("📢 **严正声明**：本平台数据由用户匿名自发标记，仅供参考。为了保护隐私，系统仅存储哈希加密数据，不保留明文手机号。禁止恶意诽谤。")
+# 🔥 核按钮：一键销毁所有数据 (保命用)
+st.sidebar.markdown("---")
+if st.sidebar.button("🔥 紧急销毁所有数据"):
+    if os.path.exists(DB_FILE):
+        os.remove(DB_FILE)
+        # 重新创建一个空的
+        pd.DataFrame(columns=["hash", "tag", "time"]).to_csv(DB_FILE, index=False)
+        st.sidebar.error("已执行：所有数据已物理删除！")
+    else:
+        st.sidebar.warning("数据已经是空的了")
 
+# --- 主界面 ---
 if agent_key in AGENT_KEYS:
-    st.title("大数据不会说谎 💔")
-    st.markdown("### —— 别让你的眼泪，变成下一个姐妹的学费。")
+    st.title("📒 社交风险模拟记录")
+    st.caption("声明：本工具仅供个人记录社交印象，数据仅存本地，请勿外传。")
     st.markdown("---")
 
-    tab1, tab2, tab3 = st.tabs(["🔍 查查现在的他", "💣 曝光那个渣男", "🛡️ 误伤申诉"])
+    tab1, tab2 = st.tabs(["🔍 检索记录", "🖊️ 记录一下"])
 
-    # === 功能1：查询 (带诱导逻辑) ===
+    # === 功能1：查记录 ===
     with tab1:
-        st.subheader("输入号码，查看他的“成分”")
-        phone_input = st.text_input("请输入他的手机号", max_chars=11)
-        
-        if st.button("立即检测", type="primary"):
+        phone_input = st.text_input("输入号码检索备注")
+        if st.button("查询"):
             if len(phone_input) < 11:
-                st.error("手机号都不对，怎么查？")
+                st.warning("号码格式不对")
             else:
                 target_hash = hash_phone(phone_input)
+                df = pd.read_csv(DB_FILE)
+                result = df[df['hash'] == target_hash]
                 
-                # 先查白名单
-                df_white = pd.read_csv(WHITE_LIST_FILE)
-                if target_hash in df_white['hash'].values:
-                    st.success("✅ 该号码已通过申诉清洗，暂无风险。")
+                if not result.empty:
+                    st.error(f"⚠️ 发现 {len(result)} 条过往备注")
+                    for index, row in result.iterrows():
+                        st.markdown(f"**标签：** {row['tag']}")
+                        st.caption(f"记录时间：{row['time']}")
                 else:
-                    # 查黑名单
-                    df = pd.read_csv(DB_FILE)
-                    result = df[df['hash'] == target_hash]
-                    
-                    if not result.empty:
-                        st.error(f"🚨 **高能预警！** 数据库中发现 {len(result)} 条关于他的记录！")
-                        st.write("### 他的标签：")
-                        for index, row in result.iterrows():
-                            # 用醒目的红色显示标签
-                            st.markdown(f"#### 🚩 **{row['tag']}**")
-                            st.caption(f"标记时间: {row['time']}")
-                        st.markdown("---")
-                        st.error("大数据建议：快跑！别回头！")
-                    else:
-                        # === 核心诱导逻辑 ===
-                        st.success("🍃 暂时安全：目前没有姐妹标记过这个号码。")
-                        
-                        st.markdown("---")
-                        st.info("💡 **但是......别高兴得太早。**")
-                        st.markdown("""
-                        **大数据的力量来源于每一个“你”。**
-                        你查的这个人可能是干净的。
-                        **但那个曾经伤害过你的前任呢？**
-                        他现在可能正在欺骗另一个无辜的女生。
-                        """)
-                        st.markdown("👉 **举手之劳，救人一命。去【曝光那个渣男】页面，把他挂上去！**")
+                    st.success("无记录：这个号码是干净的。")
 
-    # === 功能2：标记 (只能选，不能写) ===
+    # === 功能2：记一笔 (严格限制内容) ===
     with tab2:
-        st.subheader("匿名录入，造福姐妹")
-        st.caption("放心，系统采用 MD5 不可逆加密，没人知道是你发的。")
-        
+        st.write("添加私人备注 (仅限标签，禁止文字描述)")
         col1, col2 = st.columns(2)
         with col1:
-            report_phone = st.text_input("渣男手机号", key="report")
+            report_phone = st.text_input("目标号码", key="add")
         with col2:
-            # 这里的标签你可以自己加，越毒越好
-            tags = st.selectbox("他做了什么？(单选)", 
-                               ["请选择...", 
-                                "海王/时间管理大师", 
-                                "借钱不还/软饭男", 
-                                "隐瞒已婚/有对象", 
-                                "冷暴力/PUA高手", 
-                                "yp/私生活混乱", 
-                                "吃饭逃单/抠门", 
-                                "妈宝男",
-                                "有暴力倾向"])
+            # 这里的选项比较温和，规避诽谤风险
+            tag = st.selectbox("选择印象标签", 
+                               ["避雷/不靠谱", 
+                                "海王/多线操作", 
+                                "借钱/经济纠纷", 
+                                "已婚/有伴侣", 
+                                "其他风险"])
         
-        if st.button("⚡ 加密挂墙"):
-            if report_phone and tags != "请选择...":
+        if st.button("加密保存"):
+            if report_phone:
                 target_hash = hash_phone(report_phone)
                 new_data = {
                     "hash": target_hash,
-                    "tag": tags,
-                    "time": datetime.datetime.now().strftime("%Y-%m-%d"),
-                    "agent_id": agent_key
-                }
-                new_df = pd.DataFrame([new_data])
-                new_df.to_csv(DB_FILE, mode='a', header=False, index=False)
-                st.balloons() # 放个气球庆祝一下
-                st.success(f"已成功标记！你做了一件好事。")
-            else:
-                st.warning("号码和标签都得填哦。")
-
-    # === 功能3：申诉 ===
-    with tab3:
-        st.write("如果是误伤，或者他已经改过自新（可能吗？），可以在此申诉。")
-        appeal_phone = st.text_input("申诉号码")
-        if st.button("提交申诉"):
-            if appeal_phone:
-                target_hash = hash_phone(appeal_phone)
-                new_white = {
-                    "hash": target_hash,
-                    "reason": "用户自主申诉",
+                    "tag": tag,
                     "time": datetime.datetime.now().strftime("%Y-%m-%d")
                 }
-                pd.DataFrame([new_white]).to_csv(WHITE_LIST_FILE, mode='a', header=False, index=False)
-                st.success("申诉已受理，风险提示已屏蔽。")
+                pd.DataFrame([new_data]).to_csv(DB_FILE, mode='a', header=False, index=False)
+                st.success("已记录。")
+            else:
+                st.warning("请输入号码")
 
 else:
-    st.title("🚫 访问受限")
-    st.error("这是内部互助系统，需要密钥才能进入。")
-    st.info("如果你也想加入【女性互助避雷联盟】，请私信管理员获取密钥。")
+    # 没密码时的伪装界面
+    st.title("404 Not Found")
+    st.info("The requested URL was not found on this server.")
